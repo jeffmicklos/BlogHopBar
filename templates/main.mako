@@ -4,7 +4,13 @@
 <%def name="css()">
 	## CSS files that are needed everywhere
 	## This is sub-classed and append to on other templates
-	${h.stylesheet_link('/css/reset.css', '/css/base.css')}
+	${h.stylesheet_link(
+		'/css/reset.css',
+		'/css/base.css',
+		minified=True,
+        combined=True,
+        combined_filename='package'
+    )}
 </%def>
 
 <%def name="js()">

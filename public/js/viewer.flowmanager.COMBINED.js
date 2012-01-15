@@ -15,10 +15,60 @@ BHB.Viewer = function(options) {
 		viewer.flowManager.prev(event);
 	});
 	
+	$('body').bind({
+		
+		'flowmanager:loaded': function(event, position) {
+			viewer.onSiteLoaded(position);
+		},
+		
+		'flowmanager.appended': function(event, position) {
+			viewer.onSiteAppended(position);
+		},
+		
+		'flowmanager:shown': function(event, position) {
+			viewer.updateSiteInfo(position);
+		}
+	
+	});
+	
+};
+
+BHB.Viewer.prototype.onSiteAppended = function(position) {
+	
+	if($.browser.mozilla) {
+		document.getElementById('site-' + position).style.filter = 'url(#displacement)';	
+	}
+	
+	$('#overlay').show();
+};
+
+BHB.Viewer.prototype.onSiteLoaded = function(position) {
+	
+	if($.browser.mozilla) {
+		document.getElementById('site-' + position).style.filter = '';	
+	}
+	
+	$('#overlay').hide();
+
+};
+
+BHB.Viewer.prototype.updateSiteInfo = function(position) {
+	
+	if(top != self) {
+		
+		$('#site-' + position).addClass('shrink');
+		
+	}
+	
+	$('#index').html(position + 1);
+	$('#url').html(this.settings.links[position]);
+	
 };
 BHB.FlowManager = function(options) {
 
-	var defaults = {};
+	var defaults = {
+		'preloadNextSite': true
+	};
 	this.settings = $.extend({}, defaults, options);
 
 	// I am not happy about this
@@ -54,31 +104,70 @@ BHB.FlowManager.prototype.showSite = function(position) {
 	if($.inArray(position, this.loadedSites) != -1) {
 		$('iframe').hide();
 		$('#site-' + position).show();
+		$('body').trigger('flowmanager:shown', [position]);
 	} else {
 		$('iframe').hide();
-		this.loadSite(position, true);
+		this.loadSite(position);
 	}
 	
 };
 
-BHB.FlowManager.prototype.loadSite = function(position, isVisibile) {
+BHB.FlowManager.prototype.loadSite = function(position, isPreloaded) {
 	
-	var viewer = this;
+	var flowmanager = this;
 	
-	$('<iframe />', {
+	var iframe = $('<iframe />', {
 		'id': 'site-' + position,
 		'src': this.settings.links[position],
-		'class': (isVisibile ? 'visible' : 'hidden')
-	}).appendTo('body');
+		'class': (isPreloaded ? 'hidden' : 'visible')
+	}).appendTo('#content');
 	
-	$('#site-' + position).load(function(event) {
-		viewer.onSiteLoaded(position);
-	});
+	if(isPreloaded) {
+		
+		this.loadedSites.push(position);
+		this.preloadNextSite(position, true);
+		
+	} else {
+		
+		// This event isn't firing and I can't figure out why
+		$('body').trigger('flowmanager.appended', [position]);
+		// so we are adding this here, even though it really shouldn't be here
+		$('#overlay').show();
+		iframe[0].style.filter = 'url(#displacement)';
+		
+		$('#site-' + position).load(function(event) {
+			flowmanager.onSiteLoaded(position);
+		});
+		
+	}
 	
 };
 
-BHB.FlowManager.prototype.onSiteLoaded = function(position) {
-	
+BHB.FlowManager.prototype.onSiteLoaded = function(position, isPreloaded) {
+
 	this.loadedSites.push(position);
+	this.preloadNextSite(position);
+
+	if(!isPreloaded) {
+		this.fireLoadedEvents(position);
+	}
 	
+	
+};
+
+BHB.FlowManager.prototype.fireLoadedEvents = function(position) {
+	
+	$('body').trigger('flowmanager:loaded', [position]);
+	$('body').trigger('flowmanager:shown', [position]);
+	
+}
+
+BHB.FlowManager.prototype.preloadNextSite = function(position) {
+	
+	var nextPosition = $.getNextIndex(this.settings.links, position);
+	
+	if(this.settings.preloadNextSite && $.inArray(nextPosition, this.loadedSites) == -1) {
+		this.loadSite(nextPosition, true);
+	}
+
 };

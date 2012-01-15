@@ -7,7 +7,13 @@
 
 <%def name="js()">
 	${parent.js()}
-	${h.javascript_link('/js/viewer.js', '/js/flowmanager.js')}
+	${h.javascript_link(
+		'/js/viewer.js',
+		'/js/flowmanager.js',
+		minified=True,
+		combined=True,
+		combined_filename='package-view'
+	)}
 </%def>
 
 <style>
